@@ -1,0 +1,10 @@
+google-generativeai~=0.5.2
+loguru~=0.7.2
+neo4j~=5.20.0
+numpy~=1.26.4
+openai~=1.24.0
+python-dotenv~=1.0.1
+typer~=0.12.3
+anthropic~=0.25.7
+ujson~=5.9.0
+requests~=2.31.0
