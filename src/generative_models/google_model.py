@@ -1,22 +1,41 @@
 import os
 from time import sleep
 
-import google.generativeai as genai
-from google.api_core.exceptions import (DeadlineExceeded, InternalServerError,
-                                        ServiceUnavailable, TooManyRequests)
-from google.generativeai import GenerationConfig, GenerativeModel
-from google.generativeai.types import HarmBlockThreshold, HarmCategory
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError
+from google.genai.types import HarmCategory, HarmBlockThreshold
+from requests import ReadTimeout
 
 from src.generative_models.llm import LLM
 from src.types.openai import ConversationHistory
 from src.utils.google_ai import map_openai_history_to_google_history
 
-safety_settings = {
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE
-}
+config=types.GenerateContentConfig(
+    temperature=0.0,
+    safety_settings=[
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold=HarmBlockThreshold.OFF
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold=HarmBlockThreshold.OFF
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold=HarmBlockThreshold.OFF
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold=HarmBlockThreshold.OFF
+        ),
+        types.SafetySetting(
+            category=HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
+            threshold=HarmBlockThreshold.OFF
+        ),
+    ]
+)
 
 
 class GoogleModel(LLM):
@@ -27,44 +46,35 @@ class GoogleModel(LLM):
             raise ValueError("GOOGLE_API_KEY environment variable not set or empty")
         print(f"Google API keys: {self.api_keys}")
         self.current_key_index = 0
-        genai.configure(api_key=self.api_keys[self.current_key_index])
         super().__init__(model_name)
-        self.client = GenerativeModel(self.model_name)
+        self.client = genai.Client(api_key=self.api_keys[self.current_key_index], http_options=types.HttpOptions(api_version='v1alpha'))
 
-    def _gemini(self, messages: ConversationHistory, stream: bool = False) -> str:
+    def _gemini(self, messages: ConversationHistory) -> str:
         last_message = messages[-1]
         if last_message["role"] in ["system", "assistant"]:
             raise ValueError(f"Last message role is not user: {last_message['role']}")
         history = map_openai_history_to_google_history(messages[:-1])
-        chat = self.client.start_chat(history=history)
+        chat = self.client.chats.create(model=self.model_name, history=history)
         chat_completion = chat.send_message(
-            last_message["content"],
-            generation_config=GenerationConfig(
-                temperature=0,
-            ),
-            safety_settings=safety_settings,
-            stream=stream,
+            message=last_message["content"],
+            config=config,
         )
-        response = ""
-        if stream:
-            for chunk in chat_completion:
-                response += chunk.candidates[0].content.parts[0].text
-                print(chunk.candidates[0].content.parts[0].text, end="", flush=True)
-            print()
-        else:
-            response = chat_completion.text
+        response = chat_completion.text
         return response.strip()
 
     def generate_content(self, messages: ConversationHistory) -> str:
         try:
             return self._gemini(messages)
-        except (ServiceUnavailable, InternalServerError, TooManyRequests, DeadlineExceeded) as e:
+        except (APIError) as e:
             print(f"Google API error: {e}")
             # Switch to next API key
             self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
-            genai.configure(api_key=self.api_keys[self.current_key_index])
-            self.client = GenerativeModel(self.model_name)
+            self.client = genai.Client(api_key=self.api_keys[self.current_key_index], http_options=types.HttpOptions(api_version='v1alpha'))
             print(f"Switched to API key index {self.current_key_index}")
+            sleep(3)
+            return self.generate_content(messages)
+        except ReadTimeout as e:
+            print(f"Read Timeout error: {e}")
             sleep(3)
             return self.generate_content(messages)
         except Exception as e:
