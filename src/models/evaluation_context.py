@@ -2,8 +2,9 @@ import re
 from pathlib import Path
 
 import ujson
+import json_repair
 from loguru import logger
-from ujson import JSONDecodeError
+from json import JSONDecodeError
 
 from src.config import OUTPUT_DIR_PATH
 from src.generative_models.llm import LLM
@@ -34,7 +35,7 @@ class EvaluationContext:
             if "```json" in parsed_output:
                 parsed_output = re.search(r"```json(.*)```", parsed_output, re.DOTALL).group(1).strip()
             parsed_output = re.search(r"\{.*}", parsed_output, re.DOTALL).group(0).strip()
-            parsed_output = ujson.loads(parsed_output)
+            parsed_output = json_repair.loads(parsed_output)
         except JSONDecodeError as e:
             logger.error(f"Failed to parse output: {e}")
             parsed_output = {"error": str(e)}
