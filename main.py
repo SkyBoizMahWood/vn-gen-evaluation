@@ -22,7 +22,7 @@ def batch_run_evaluation_with(
             help="Path of a text file containing a list of story ids to evaluate. Story ids should be separated by new "
                  "lines")],
         trial_id: Annotated[str, typer.Option(help="The trial id to save")],
-        model_name: Annotated[Optional[str], typer.Option(help="The generative model to use")] = "gpt-3.5-turbo-0125"):
+        model_name: Annotated[Optional[str], typer.Option(help="The generative model to use")] = "gemini-2.0-flash-001"):
     with open(story_ids_list_path, "r") as f:
         story_ids = f.read().splitlines()
         logger.info(f"Running evaluation for {len(story_ids)} stories")

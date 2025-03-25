@@ -73,13 +73,14 @@ class GoogleModel(LLM):
             print(f"Switched to API key index {self.current_key_index}")
             sleep(3)
             return self.generate_content(messages)
-        except ReadTimeout as e:
+        except (ReadTimeout, ConnectionError) as e:
             print(f"Read Timeout error: {e}")
             sleep(3)
             return self.generate_content(messages)
         except Exception as e:
             print(f"Unexpected error: {e}")
-            raise e
+            sleep(3)
+            return self.generate_content(messages)
     
     def __str__(self):
         return f"GoogleModel(model_name={self.model_name})"
