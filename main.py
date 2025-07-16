@@ -22,7 +22,7 @@ def batch_run_evaluation_with(
             help="Path of a text file containing a list of story ids to evaluate. Story ids should be separated by new "
                  "lines")],
         trial_id: Annotated[str, typer.Option(help="The trial id to save")],
-        model_name: Annotated[Optional[str], typer.Option(help="The generative model to use")] = "gemini-2.0-flash-001"):
+        model_name: Annotated[Optional[str], typer.Option(help="The generative model to use")] = "gemini-2.5-pro"):
     with open(story_ids_list_path, "r") as f:
         story_ids = f.read().splitlines()
         logger.info(f"Running evaluation for {len(story_ids)} stories")
@@ -36,7 +36,7 @@ def batch_run_evaluation_with(
 def run_evaluation_with(
         story_id: Annotated[str, typer.Option(help="The story id to evaluate")],
         trial_id: Annotated[str, typer.Option(help="The trial id to save")],
-        model_name: Annotated[Optional[str], typer.Option(help="The generative model to use")] = "gemini-2.0-flash-001"):
+        model_name: Annotated[Optional[str], typer.Option(help="The generative model to use")] = "gemini-2.5-pro"):
     context = EvaluationContext(
         story_id=story_id,
         trial_id=trial_id,
@@ -61,8 +61,15 @@ def run_analysis_with(
     logger.info(f"Running analysis with context: {context}")
     analysis_result = run_analysis(context)
     print(f"Results for story {story_id}:")
+    avg_score = 0.0
+    avg_score_sd = 0.0
     for criterion, score in analysis_result.items():
-        print(f"{criterion}: {score['mean']:.4f} ± {score['sd']:.4f}")
+        print(f"{criterion}: {score['mean']:.2f} ± {score['sd']:.2f}")
+        avg_score += score['mean']
+        avg_score_sd += score['sd']
+    avg_score /= len(analysis_result)
+    avg_score_sd /= len(analysis_result)
+    print(f"Average: {avg_score:.2f} ± {avg_score_sd:.2f}")
 
 
 if __name__ == "__main__":

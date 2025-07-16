@@ -36,7 +36,11 @@ def calculate_criterion_scores(file_path: Path, criterion: Criterion) -> float:
         data = ujson.load(file)
     if "error" in data["parsed_output"]:
         return 0
-    factor_scores = data["parsed_output"][criterion.name]
+    try:
+        factor_scores = data["parsed_output"][criterion.name]
+    except KeyError:
+        print(f"Criterion {criterion.name} not found in {file_path}")
+        exit(1)
     score_avg, _ = calc_mean_sd([factor["score"] for factor in factor_scores])
     return score_avg
 
