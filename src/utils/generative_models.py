@@ -6,7 +6,7 @@ from src.generative_models.openai_model import OpenAIModel
 
 
 def get_generation_model(model_name: str) -> LLM:
-    if model_name in ["gemini-1.0-pro-001", "gemini-2.0-flash-001"]:
+    if model_name in ["gemini-1.0-pro-001", "gemini-2.0-flash-001", "gemini-2.5-pro"]:
         return GoogleModel(model_name)
     elif model_name in ["gpt-3.5-turbo-0125", "gpt-4-turbo-2024-04-09"]:
         return OpenAIModel(model_name)
